@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Field Log">
+<meta name="theme-color" content="#EDE6D6">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Field Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: #EDE6D6;
+    background-image: repeating-linear-gradient(0deg, rgba(139,111,78,0.06) 0px, rgba(139,111,78,0.06) 1px, transparent 1px, transparent 28px);
+    font-family: 'JetBrains Mono', monospace;
+    color: #2B2B26;
+    padding: 28px 14px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; }
+  .title-row { display: flex; align-items: center; gap: 8px; }
+  h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .subtitle { font-size: 12px; letter-spacing: 0.08em; color: #7A7160; margin-top: 4px; text-transform: uppercase; }
+  .streak-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: #2B2B26; color: #EDE6D6; border-radius: 3px;
+    padding: 6px 10px; font-size: 13px; flex-shrink: 0;
+  }
+  .streak-badge .num { font-weight: 700; }
+  .streak-badge .lbl { color: #B8B2A2; font-size: 11px; letter-spacing: 0.04em; }
+  .error-box {
+    background: #F4E2DB; border: 1px solid #C1552C; color: #7A3319;
+    font-size: 13px; padding: 8px 12px; border-radius: 3px; margin-bottom: 16px;
+  }
+  .week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .nav-btn {
+    background: none; border: none; color: #5C5648; font-size: 12px;
+    letter-spacing: 0.06em; font-family: 'JetBrains Mono', monospace; cursor: pointer; padding: 4px 6px;
+  }
+  .month-label { font-size: 13px; letter-spacing: 0.06em; color: #5C5648; text-transform: uppercase; }
+  .month-label .cur { color: #566B3B; }
+  .days-panel { border: 1px solid #C9BC9C; border-radius: 4px; background: #F2ECDC; padding: 6px 10px 10px; }
+  .day-row { border-top: 1px dashed #C9BC9C; }
+  .day-row:first-child { border-top: none; }
+  .day-btn {
+    width: 100%; background: none; border: none; cursor: pointer; padding: 12px 4px;
+    display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: inherit;
+  }
+  .day-btn.future { opacity: 0.6; }
+  .date-block { width: 46px; flex-shrink: 0; text-align: center; }
+  .date-block .dow { font-size: 10px; letter-spacing: 0.08em; color: #8B8471; }
+  .date-block .num { font-family: 'Oswald', sans-serif; font-size: 20px; font-weight: 600; color: #2B2B26; }
+  .date-block .num.today { color: #B4552F; }
+  .pills { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill {
+    display: flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 3px;
+    border: 1px solid #C9BC9C; color: #8B8471; font-size: 10.5px; letter-spacing: 0.03em; text-transform: uppercase;
+  }
+  .pill.active { border-color: #566B3B; background: #566B3B; color: #F2ECDC; }
+  .stamp-wrap { width: 30px; flex-shrink: 0; display: flex; justify-content: center; }
+  .stamp {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid #566B3B; color: #566B3B;
+    display: flex; align-items: center; justify-content: center; transform: rotate(-8deg); flex-shrink: 0;
+  }
+  .stamp.pop { animation: stampIn 0.5s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes stampIn {
+    0% { transform: scale(2.2) rotate(-14deg); opacity: 0; }
+    60% { transform: scale(0.92) rotate(-8deg); opacity: 1; }
+    100% { transform: scale(1) rotate(-8deg); opacity: 1; }
+  }
+  .chevron { transition: transform 0.15s ease; color: #8B8471; }
+  .chevron.open { transform: rotate(180deg); }
+  .detail { padding: 0 4px 16px 58px; animation: expandIn 0.2s ease both; }
+  @keyframes expandIn { 0% { opacity: 0; transform: translateY(-4px);} 100% { opacity: 1; transform: translateY(0);} }
+  .ex-grid { display: grid; gap: 8px; margin-bottom: 12px; }
+  .ex-row { display: flex; align-items: center; gap: 8px; }
+  .ex-label { width: 78px; font-size: 12px; color: #5C5648; flex-shrink: 0; }
+  .set-input {
+    width: 40px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    padding: 5px 2px; border: 1px solid #C9BC9C; border-radius: 3px; background: #FBF8EF; color: #2B2B26;
+  }
+  .set-input:focus-visible, button:focus-visible { outline: 2px solid #B4552F; outline-offset: 2px; }
+  .unit { font-size: 10.5px; color: #8B8471; }
+  .toggle-row { display: flex; gap: 8px; }
+  .toggle-btn {
+    display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; padding: 8px 6px;
+    border-radius: 3px; border: 1.5px solid #C9BC9C; background: transparent; color: #5C5648;
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; letter-spacing: 0.03em;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .toggle-btn.active { border-color: #566B3B; background: #566B3B; color: #F2ECDC; }
+  .footnote { margin-top: 18px; font-size: 11.5px; color: #8B8471; line-height: 1.6; }
+  svg { display: block; }
+  @media (prefers-reduced-motion: reduce) {
+    .stamp.pop, .detail { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+const WEEKDAY_LABELS = ["MON","TUE","WED","THU","FRI"];
+const SET_COUNT = 3;
+const EXERCISES = [
+  { key: "pullups", label: "Pull-ups", unit: "reps" },
+  { key: "pushups", label: "Push-ups", unit: "reps" },
+  { key: "squats", label: "Squats", unit: "reps" },
+  { key: "plank", label: "Plank", unit: "sec" },
+];
+const STORAGE_PREFIX = "fieldlog:entry:";
+
+const icons = {
+  mountain: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#566B3B" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>',
+  flame: (active) => `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="${active ? '#D97A45' : 'none'}" stroke="${active ? '#D97A45' : '#8A8578'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`,
+  dumbbell: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg>',
+  footprints: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/></svg>',
+  waves: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>',
+  check: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  chevron: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8471" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+};
+
+function pad(n) { return String(n).padStart(2, "0"); }
+function toKey(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function startOfWeekMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+function emptyEntry() {
+  const sets = {};
+  EXERCISES.forEach(ex => sets[ex.key] = Array(SET_COUNT).fill(""));
+  return { sets, yoga: false, walk: false };
+}
+function loadEntry(key) {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + key);
+    if (!raw) return emptyEntry();
+    const parsed = JSON.parse(raw);
+    return { ...emptyEntry(), ...parsed, sets: { ...emptyEntry().sets, ...(parsed.sets||{}) } };
+  } catch { return emptyEntry(); }
+}
+function saveEntryRaw(key, entry) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(entry));
+    return true;
+  } catch { return false; }
+}
+function isWorkoutLogged(entry) {
+  return EXERCISES.every(ex => (entry.sets[ex.key]||[]).some(v => v !== "" && Number(v) > 0));
+}
+function isDayComplete(entry) {
+  return isWorkoutLogged(entry) && entry.yoga && entry.walk;
+}
+
+let state = {
+  weekOffset: 0,
+  expandedKey: null,
+  justStamped: null,
+  error: null,
+};
+
+const today = new Date();
+today.setHours(0,0,0,0);
+
+function computeStreak() {
+  let count = 0;
+  let cursor = new Date(today);
+  for (let i = 0; i < 400; i++) {
+    const dow = cursor.getDay();
+    if (dow === 0 || dow === 6) { cursor.setDate(cursor.getDate()-1); continue; }
+    const key = toKey(cursor);
+    const entry = loadEntry(key);
+    const complete = isDayComplete(entry);
+    if (!complete) {
+      if (toKey(cursor) === toKey(today)) { cursor.setDate(cursor.getDate()-1); continue; }
+      break;
+    }
+    count += 1;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return count;
+}
+
+function render() {
+  const baseMonday = startOfWeekMonday(today);
+  const viewMonday = new Date(baseMonday);
+  viewMonday.setDate(viewMonday.getDate() + state.weekOffset * 7);
+  const weekDates = Array.from({length:5}, (_,i) => {
+    const d = new Date(viewMonday); d.setDate(d.getDate()+i); return d;
+  });
+  const isCurrentWeek = state.weekOffset === 0;
+  const monthLabel = viewMonday.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const streak = computeStreak();
+
+  let daysHtml = "";
+  weekDates.forEach((date, idx) => {
+    const key = toKey(date);
+    const entry = loadEntry(key);
+    const complete = isDayComplete(entry);
+    const workoutLogged = isWorkoutLogged(entry);
+    const isToday = toKey(date) === toKey(today);
+    const isFuture = date > today && !isToday;
+    const isOpen = state.expandedKey === key;
+
+    const stampHtml = complete
+      ? `<div class="stamp ${state.justStamped===key?'pop':''}" title="Complete">${icons.check}</div>`
+      : `<div class="chevron ${isOpen?'open':''}">${icons.chevron}</div>`;
+
+    let detailHtml = "";
+    if (isOpen) {
+      const exRows = EXERCISES.map(ex => {
+        const inputs = entry.sets[ex.key].map((val, sIdx) =>
+          `<input class="set-input" type="text" inputmode="numeric" placeholder="0" value="${val}"
+            data-key="${key}" data-ex="${ex.key}" data-idx="${sIdx}" aria-label="${ex.label} set ${sIdx+1}">`
+        ).join("");
+        return `<div class="ex-row"><div class="ex-label">${ex.label}</div>${inputs}<span class="unit">${ex.unit}</span></div>`;
+      }).join("");
+
+      detailHtml = `<div class="detail">
+        <div class="ex-grid">${exRows}</div>
+        <div class="toggle-row">
+          <button class="toggle-btn ${entry.yoga?'active':''}" data-toggle="yoga" data-key="${key}">${icons.waves} Yoga cooldown</button>
+          <button class="toggle-btn ${entry.walk?'active':''}" data-toggle="walk" data-key="${key}">${icons.footprints} Evening walk</button>
+        </div>
+      </div>`;
+    }
+
+    daysHtml += `<div class="day-row">
+      <button class="day-btn ${isFuture?'future':''}" data-day-toggle="${key}">
+        <div class="date-block">
+          <div class="dow">${WEEKDAY_LABELS[idx]}</div>
+          <div class="num ${isToday?'today':''}">${date.getDate()}</div>
+        </div>
+        <div class="pills">
+          <div class="pill ${workoutLogged?'active':''}">${icons.dumbbell} Workout</div>
+          <div class="pill ${entry.yoga?'active':''}">${icons.waves} Yoga</div>
+          <div class="pill ${entry.walk?'active':''}">${icons.footprints} Walk</div>
+        </div>
+        <div class="stamp-wrap">${stampHtml}</div>
+      </button>
+      ${detailHtml}
+    </div>`;
+  });
+
+  document.getElementById("app").innerHTML = `
+    <div class="header">
+      <div>
+        <div class="title-row">${icons.mountain}<h1>Field Log</h1></div>
+        <div class="subtitle">Morning Session &middot; Evening Walk</div>
+      </div>
+      <div class="streak-badge">${icons.flame(streak>0)}<span class="num">${streak}</span><span class="lbl">DAY STREAK</span></div>
+    </div>
+    ${state.error ? `<div class="error-box">${state.error}</div>` : ""}
+    <div class="week-nav">
+      <button class="nav-btn" id="prevWeek">&larr; PREV</button>
+      <div class="month-label">${monthLabel} ${isCurrentWeek ? '<span class="cur">&middot; this week</span>' : ''}</div>
+      <button class="nav-btn" id="nextWeek">NEXT &rarr;</button>
+    </div>
+    <div class="days-panel">${daysHtml}</div>
+    <div class="footnote">Tap a day to log sets for pull-ups, push-ups, squats, and plank, then mark yoga and the walk. A day stamps complete once every exercise has at least one set logged, plus yoga and the walk. Streak counts consecutive weekdays complete — weekends aren't tracked. Data is saved on this device.</div>
+  `;
+
+  document.getElementById("prevWeek").onclick = () => { state.weekOffset -= 1; render(); };
+  document.getElementById("nextWeek").onclick = () => { state.weekOffset += 1; render(); };
+
+  document.querySelectorAll("[data-day-toggle]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-day-toggle");
+      state.expandedKey = state.expandedKey === key ? null : key;
+      render();
+    });
+  });
+
+  document.querySelectorAll(".set-input").forEach(input => {
+    input.addEventListener("input", (e) => {
+      const key = input.getAttribute("data-key");
+      const exKey = input.getAttribute("data-ex");
+      const idx = Number(input.getAttribute("data-idx"));
+      const cleanVal = e.target.value.replace(/[^0-9]/g, "").slice(0,3);
+      const entry = loadEntry(key);
+      const wasComplete = isDayComplete(entry);
+      entry.sets[exKey][idx] = cleanVal;
+      const ok = saveEntryRaw(key, entry);
+      if (!ok) { state.error = "Couldn't save that entry. Try again."; setTimeout(()=>{state.error=null; render();}, 2500); }
+      if (isDayComplete(entry) && !wasComplete) {
+        state.justStamped = key;
+        setTimeout(() => { state.justStamped = null; render(); }, 900);
+      }
+      render();
+      // restore focus + cursor to the same input after re-render
+      const restored = document.querySelector(`.set-input[data-key="${key}"][data-ex="${exKey}"][data-idx="${idx}"]`);
+      if (restored) { restored.focus(); restored.setSelectionRange(restored.value.length, restored.value.length); }
+    });
+  });
+
+  document.querySelectorAll("[data-toggle]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-key");
+      const field = btn.getAttribute("data-toggle");
+      const entry = loadEntry(key);
+      const wasComplete = isDayComplete(entry);
+      entry[field] = !entry[field];
+      const ok = saveEntryRaw(key, entry);
+      if (!ok) { state.error = "Couldn't save that entry. Try again."; setTimeout(()=>{state.error=null; render();}, 2500); }
+      if (isDayComplete(entry) && !wasComplete) {
+        state.justStamped = key;
+        setTimeout(() => { state.justStamped = null; render(); }, 900);
+      }
+      render();
+    });
+  });
+}
+
+render();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
